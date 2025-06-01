@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Smart Parking Monitor</title>
+  <script src="https://cdn.pubnub.com/sdk/javascript/pubnub.7.2.2.min.js"></script>
+  <style>
+    body {
+      font-family: "Segoe UI", sans-serif;
+      background-color: #f4f6f9;
+      margin: 0;
+      padding: 30px;
+      color: #2c3e50;
+    }
+
+    h2 {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+
+    .section {
+      background: #fff;
+      border-radius: 10px;
+      padding: 25px;
+      margin: 20px auto;
+      max-width: 800px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.07);
+    }
+
+    .green { color: #27ae60; font-weight: bold; }
+    .yellow { color: #f39c12; font-weight: bold; }
+    .red { color: #c0392b; font-weight: bold; }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin-top: 15px;
+      font-size: 14px;
+    }
+
+    th, td {
+      border: 1px solid #ddd;
+      padding: 10px;
+      text-align: center;
+    }
+
+    th {
+      background-color: #ecf0f1;
+    }
+
+    button {
+      background-color: #3498db;
+      color: white;
+      padding: 12px 20px;
+      margin-top: 15px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 15px;
+      transition: background-color 0.3s ease;
+    }
+
+    button:hover {
+      background-color: #2980b9;
+    }
+
+    .realtime-data {
+      text-align: center;
+      font-size: 18px;
+      line-height: 1.8;
+    }
+
+    .realtime-data span {
+      font-weight: bold;
+    }
+
+    .history h3 {
+      margin-bottom: 10px;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>Smart Parking Monitoring System</h2>
+
+  <div class="section realtime">
+    <h3>Real-Time Data</h3>
+    <div class="realtime-data">
+      <p id="timestamp">Timestamp: <span>-</span></p>
+      <p id="distance">Distance: <span>- cm</span></p>
+      <p id="led">LED Status: <span>-</span></p>
+    </div>
+  </div>
+
+  <div class="section history">
+    <h3>Last 20 Records</h3>
+    <button onclick="requestHistory()">Load History</button>
+    <table id="history-table">
+      <thead>
+        <tr>
+          <th>Timestamp</th>
+          <th>Distance (cm)</th>
+          <th>LED Status</th>
+        </tr>
+      </thead>
+      <tbody id="history-body"></tbody>
+    </table>
+  </div>
+
+  <script>
+    const pubnub = new PubNub({
+      publishKey: "pub-c-c58b42a3-351f-4bd8-917e-8cf2b98951fa",
+      subscribeKey: "sub-c-f1db718c-3ec9-4cbe-a570-db64815a2e8b",
+      uuid: "userId"
+    });
+
+    pubnub.subscribe({
+      channels: ['parking.current', 'parking.history']
+    });
+
+    pubnub.addListener({
+      message: function(event) {
+        const msg = event.message;
+
+        if (event.channel === 'parking.current') {
+          document.getElementById("timestamp").innerHTML = "Timestamp: <span>" + msg.timestamp + "</span>";
+          document.getElementById("distance").innerHTML = "Distance: <span>" + msg.distance + " cm</span>";
+          document.getElementById("led").innerHTML = 'LED Status: <span class="' + msg.led_status + '">' + msg.led_status.toUpperCase() + '</span>';
+        }
+
+        if (event.channel === 'parking.history') {
+          const tbody = document.getElementById("history-body");
+          tbody.innerHTML = "";
+          msg.forEach(entry => {
+            const row = `<tr>
+              <td>${entry.timestamp}</td>
+              <td>${entry.distance}</td>
+              <td class="${entry.led_status}">${entry.led_status.toUpperCase()}</td>
+            </tr>`;
+            tbody.innerHTML += row;
+          });
+        }
+      }
+    });
+
+    function requestHistory() {
+      pubnub.publish({
+        channel: "parking.request",
+        message: { "command": "history" }
+      });
+    }
+  </script>
+
+</body>
+</html>
